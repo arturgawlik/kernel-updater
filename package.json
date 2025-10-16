@@ -1,0 +1,16 @@
+{
+  "name": "kernel-updater",
+  "version": "0.0.1",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "jsdom": "^27.0.0",
+    "sudo": "^1.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2"
+  }
+}
