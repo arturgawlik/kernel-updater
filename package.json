@@ -6,6 +6,10 @@
   "author": "",
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "test:snapshots": "node --test --test-update-snapshots"
+  },
   "dependencies": {
     "jsdom": "^27.0.0",
     "sudo": "^1.0.3"

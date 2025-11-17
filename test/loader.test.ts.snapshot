@@ -1,0 +1,41 @@
+exports[`Loader 1`] = `
+[
+  "\\u001b[2K",
+  "\\u001b[1G",
+  "Calculating files to fetch for \\u001b[1m6.17.1\\u001b[22m .",
+  "\\u001b[2K",
+  "\\u001b[1G",
+  "Calculating files to fetch for \\u001b[1m6.17.1\\u001b[22m .."
+]
+`;
+
+exports[`Loader 2`] = `
+[
+  "\\u001b[2K",
+  "\\u001b[1G",
+  "test updated text .",
+  "\\u001b[2K",
+  "\\u001b[1G",
+  "test updated text .."
+]
+`;
+
+exports[`Loader 3`] = `
+[
+  "\\u001b[2K",
+  "\\u001b[1G"
+]
+`;
+
+exports[`Loader 4`] = `
+[
+  "\\u001b[2K",
+  "\\u001b[1G",
+  "\\u001b[2K",
+  "\\u001b[1G",
+  "Calculating files to fetch for \\u001b[1m6.17.1\\u001b[22m .",
+  "\\u001b[2K",
+  "\\u001b[1G",
+  "Calculating files to fetch for \\u001b[1m6.17.1\\u001b[22m .."
+]
+`;
