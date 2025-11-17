@@ -1,20 +1,39 @@
 {
   "name": "kernel-updater",
-  "version": "0.0.1",
-  "description": "",
+  "version": "0.0.4",
+  "description": "Simple helper to update kernel.",
+  "keywords": [
+    "linux",
+    "kernel",
+    "update"
+  ],
+  "homepage": "https://github.com/arturgawlik/kernel-updater#readme",
+  "bugs": {
+    "url": "https://github.com/arturgawlik/kernel-updater/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arturgawlik/kernel-updater.git"
+  },
   "license": "ISC",
-  "author": "",
+  "author": "Artur Gawlik",
   "type": "module",
-  "main": "index.js",
+  "bin": "./dist/index.mjs",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "node --test",
-    "test:snapshots": "node --test --test-update-snapshots"
+    "test:snapshots": "node --test --test-update-snapshots",
+    "build": "tsdown"
   },
   "dependencies": {
     "jsdom": "^27.0.0",
     "sudo": "^1.0.3"
   },
   "devDependencies": {
-    "@types/node": "^24.7.2"
+    "@types/node": "^24.7.2",
+    "tsdown": "^0.16.5",
+    "typescript": "^5.9.3"
   }
 }

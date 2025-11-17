@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { ChildProcess, spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { styleText } from "node:util";
