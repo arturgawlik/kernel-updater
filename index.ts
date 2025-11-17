@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { ChildProcess, spawn } from "node:child_process";
 import { createWriteStream } from "node:fs";
 import { styleText } from "node:util";
 import { createInterface } from "node:readline/promises";
@@ -7,6 +7,7 @@ import { parse } from "node:path";
 // TODO: consider own implementations
 import { JSDOM } from "jsdom";
 import sudo from "sudo";
+import { Loader } from "./loader.ts";
 
 const kKernelsUrl = "https://kernel.ubuntu.com/mainline/?C=N;O=D";
 const kKernelDetailsUrl = (version) =>
@@ -23,28 +24,40 @@ const kVersionReg = /^v(((\d*)(\.(\d*))?(\.(\d*))?)(-)?(rc\d)?)(\/)$/;
 const kHostLinuxVersion = /\d*[.]\d*[.]\d*[-]\d*[-][a-z]*/;
 
 const main = async () => {
-  const availableKernelVersions = await fetchAndParseLastKernelVersions();
-  printAvailableKernels(availableKernelVersions);
-  const hostKernelVersion = await getHostKernelVersion();
-  printHostKernel(hostKernelVersion);
-  const versionToInstall = await askWhichVersionToInstall(
-    availableKernelVersions
-  );
-  const { stopLoader, updateLoaderText } = printLoader(versionToInstall);
-  const kernelsToDownloadUrls = await fetchKernelUrlsToDownload(
-    versionToInstall
-  );
-  const mainCatalogOfDownloadedKernels = await downloadKernels(
-    versionToInstall,
-    kernelsToDownloadUrls,
-    updateLoaderText
-  );
-  // TODO: stop loader here to not mess with password request
-  //       probably it could be improved by wrapping child processes stdio into some 
-  //       special visual frame
-  stopLoader();
-  await installKernels(mainCatalogOfDownloadedKernels);
-  printSuccess();
+  try {
+    const availableKernelVersions = await fetchAndParseLastKernelVersions();
+    printAvailableKernels(availableKernelVersions);
+    const hostKernelVersion = await getHostKernelVersion();
+    printHostKernel(hostKernelVersion);
+    const versionToInstall = await askWhichVersionToInstall(
+      availableKernelVersions
+    );
+    const loader = new Loader({
+      version: versionToInstall,
+      output: process.stdout,
+    });
+    const kernelsToDownloadUrls = await fetchKernelUrlsToDownload(
+      versionToInstall
+    );
+    const mainCatalogOfDownloadedKernels = await downloadKernels(
+      versionToInstall,
+      kernelsToDownloadUrls,
+      loader
+    );
+    // TODO: stop loader here to not mess with password request
+    //       probably it could be improved by wrapping child processes stdio into some
+    //       special visual frame
+    loader.pauseLoader();
+    await installKernels(mainCatalogOfDownloadedKernels);
+    loader.pauseLoader();
+    printSuccess();
+  } catch (e) {
+    if (e.code === "ABORT_ERR") {
+      console.log("/n");
+      return;
+    }
+    throw e;
+  }
 };
 
 const cleanup = () => {
@@ -54,7 +67,6 @@ process.once("exit", cleanup);
 process.once("SIGINT", cleanup); // CTRL+C
 
 const fetchAndParseLastKernelVersions = async () => {
-  // TODO: change back to fetching from web
   const rawFetchedKernelListStr = await fetch(kKernelsUrl).then((r) =>
     r.text()
   );
@@ -85,15 +97,17 @@ const fetchAndParseLastKernelVersions = async () => {
 };
 
 const getHostKernelVersion = async () => {
-  const rawUnameResult = await new Promise((res, rej) => {
-    const childProcess = spawn("uname", ["-a"]);
-    let stdout = "";
-    const addToStdOut = (chunk) => (stdout += chunk);
-    childProcess.stdout.on("data", addToStdOut);
-    childProcess.once("exit", () => {
-      childProcess.stdout.removeListener("data", addToStdOut);
-      res(stdout);
-    });
+  const rawUnameResult: string = await new Promise(async (res, rej) => {
+    try {
+      const childProcess = spawn("uname", ["-a"]);
+      let buffer = "";
+      for await (const chunk of childProcess.stdout) {
+        buffer += chunk;
+      }
+      res(buffer);
+    } catch (e) {
+      rej(e);
+    }
   });
   const unameResult = kHostLinuxVersion.exec(rawUnameResult).at(0);
   return unameResult;
@@ -117,38 +131,6 @@ const parseAndValidatePickedIndex = (pickedIndex) => {
   )
     exitErr();
   return parsed;
-};
-
-const printLoader = (versionToInstall) => {
-  let dots = "";
-  let loaderText =
-    "Calculating files to fetch for " +
-    styleText("bold", versionToInstall.version);
-  const clearLine = () => {
-    process.stdout.clearLine(0);
-    process.stdout.cursorTo(0);
-  };
-  const print = () => {
-    if (dots.length < 3) dots += ".";
-    else dots = ".";
-    clearLine();
-    process.stdout.write(loaderText + " " + dots);
-    process.stdout.cursorTo(0);
-  };
-  print();
-  const interval = setInterval(() => {
-    print();
-  }, 750);
-  return {
-    stopLoader: () => {
-      clearLine();
-      clearInterval(interval);
-    },
-    updateLoaderText: (newText) => {
-      loaderText = newText;
-      print();
-    },
-  };
 };
 
 const askWhichVersionToInstall = async (availableKernelVersions) => {
@@ -194,13 +176,13 @@ const fetchKernelUrlsToDownload = async (versionToInstall) => {
   return kernelUrls;
 };
 
-const downloadKernels = async (kernelVersion, kernelUrls, updateLoaderText) => {
+const downloadKernels = async (kernelVersion, kernelUrls, loader: Loader) => {
   let mainCatalogOfDownloadedKernels: string;
   const getLoaderText = (kernelUrl) =>
     `Downloading ${styleText("bold", kernelUrl.fileName)}`;
   // TODO: probably this should be asynchronous
   for (const kernelUrl of kernelUrls) {
-    updateLoaderText(getLoaderText(kernelUrl));
+    loader.updateLoaderText(getLoaderText(kernelUrl));
     // TODO: maybe some smarter solution than overriding it while iterating in loop
     let filePath: string;
     await new Promise(async (res, rej) => {
@@ -239,7 +221,7 @@ const downloadKernels = async (kernelVersion, kernelUrls, updateLoaderText) => {
 const installKernels = async (mainCatalogOfDownloadedKernels) => {
   await new Promise((res, rej) => {
     const dpkgWildPath = mainCatalogOfDownloadedKernels + "/";
-    const childProcess = sudo([
+    const childProcess: ChildProcess = sudo([
       "dpkg",
       "--install",
       "--recursive",
